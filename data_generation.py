@@ -9,9 +9,11 @@ def rng():
       print(tmp)
 
 def list_rng():
-  i = 0
-  while i < 1475:
-    print(randrange(26) + 1)
+  i = 1
+  while i < 31:
+    num_topics = randrange(6) + 1
+    for x in range(num_topics):
+      print(randrange(20) + 1)
     i += 1
 
 list_rng()
