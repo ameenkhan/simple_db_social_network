@@ -8,12 +8,12 @@ def rng():
       res.add(tmp)
       print(tmp)
 
+# print(randrange(5) + 2015)
+
 def list_rng():
   i = 1
-  while i < 31:
-    num_topics = randrange(6) + 1
-    for x in range(num_topics):
-      print(randrange(20) + 1)
+  while i < 1476:
+    print(randrange(31) + 1)
     i += 1
 
 list_rng()
