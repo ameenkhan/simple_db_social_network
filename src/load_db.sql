@@ -15,7 +15,7 @@ DROP TABLE IF EXISTS Group_T;
 CREATE TABLE Group_T(
   group_id INT,
   group_name varchar(255),
-  num_followers int, -- TODO calc this dynamically or as a temp var calc when needed
+  num_followers INT DEFAULT NULL, -- TODO calc this dynamically or as a temp var calc when needed
   PRIMARY KEY(group_id)
 );
 LOAD DATA INFILE '/var/lib/mysql-files/project/Groups.csv' IGNORE INTO TABLE Group_T FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n' IGNORE 1 ROWS
@@ -25,7 +25,7 @@ DROP TABLE IF EXISTS Topics;
 CREATE TABLE Topics(
   topic_id INT,
   topic_name VARCHAR(255),
-  num_posts INT, -- TODO calc this dynamically or as a temp var calc when needed
+  num_posts INT DEFAULT NULL, -- TODO calc this dynamically or as a temp var calc when needed
   PRIMARY KEY(topic_id)
 );
 LOAD DATA INFILE '/var/lib/mysql-files/project/Topics.csv' IGNORE INTO TABLE Topics FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n' IGNORE 1 ROWS
@@ -62,7 +62,7 @@ LOAD DATA INFILE '/var/lib/mysql-files/project/followers_topics.csv' IGNORE INTO
 DROP TABLE IF EXISTS followers_people;
 CREATE TABLE followers_people(
   person_id VARCHAR(255),
-  follows_id INT,
+  follows_id VARCHAR(255),
   PRIMARY KEY(person_id, follows_id)
 );
 LOAD DATA INFILE '/var/lib/mysql-files/project/followers_people.csv' IGNORE INTO TABLE followers_people FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n' IGNORE 1 ROWS
@@ -104,7 +104,7 @@ ALTER TABLE post_topics
 ADD FOREIGN KEY (post_id) REFERENCES Posts(post_id),
 ADD FOREIGN KEY (topic_id) REFERENCES Topics(topic_id);
 
-ALTER TABLE followers_topic
+ALTER TABLE followers_topics
 ADD FOREIGN KEY (topic_id) REFERENCES Topics(topic_id),
 ADD FOREIGN KEY (person_id) REFERENCES People(person_id);
 
