@@ -79,7 +79,7 @@ LOAD DATA INFILE '/var/lib/mysql-files/project/followers_groups.csv' IGNORE INTO
 
 DROP TABLE IF EXISTS Posts;
 CREATE TABLE Posts(
-  post_id INT,
+  post_id INT NOT NULL AUTO_INCREMENT,
   post_date DATE,
   group_id INT,
   author VARCHAR(255),
