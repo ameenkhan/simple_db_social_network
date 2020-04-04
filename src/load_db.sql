@@ -6,10 +6,12 @@ CREATE TABLE People(
   age INT,
   dob DATE,
   gender VARCHAR(255),
+  fname VARCHAR(255),
+  lname VARCHAR(255),
   PRIMARY KEY(person_id)
 );
 LOAD DATA INFILE '/var/lib/mysql-files/project/People.csv' IGNORE INTO TABLE People FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n' IGNORE 1 ROWS
-(person_id, age, dob, gender);
+(person_id, age, dob, gender, fname, lname);
 
 DROP TABLE IF EXISTS Group_T;
 CREATE TABLE Group_T(
