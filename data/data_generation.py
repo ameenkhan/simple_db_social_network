@@ -13,7 +13,7 @@ def rng():
 def list_rng():
   i = 1
   while i < 1476:
-    print(randrange(31) + 1)
+    print(randrange(500) + 1)
     i += 1
 
 list_rng()

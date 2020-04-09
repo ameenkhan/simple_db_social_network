@@ -17,21 +17,23 @@ DROP TABLE IF EXISTS Group_T;
 CREATE TABLE Group_T(
   group_id INT,
   group_name varchar(255),
-  num_followers INT DEFAULT NULL, -- TODO calc this dynamically or as a temp var calc when needed
+  -- num_followers INT DEFAULT NULL, -- TODO calc this dynamically or as a temp var calc when needed
   PRIMARY KEY(group_id)
 );
 LOAD DATA INFILE '/var/lib/mysql-files/project/Groups.csv' IGNORE INTO TABLE Group_T FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n' IGNORE 1 ROWS
-(group_id, group_name, num_followers);
+(group_id, group_name);
+-- (group_id, group_name, num_followers);
 
 DROP TABLE IF EXISTS Topics;
 CREATE TABLE Topics(
   topic_id INT,
   topic_name VARCHAR(255),
-  num_posts INT DEFAULT NULL, -- TODO calc this dynamically or as a temp var calc when needed
+  -- num_posts INT DEFAULT NULL, -- TODO calc this dynamically or as a temp var calc when needed
   PRIMARY KEY(topic_id)
 );
 LOAD DATA INFILE '/var/lib/mysql-files/project/Topics.csv' IGNORE INTO TABLE Topics FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n' IGNORE 1 ROWS
-(topic_id, topic_name, num_posts);
+(topic_id, topic_name);
+-- (topic_id, topic_name, num_posts);
 
 DROP TABLE IF EXISTS Auth;
 CREATE TABLE Auth(
@@ -84,12 +86,15 @@ CREATE TABLE Posts(
   post_id INT NOT NULL AUTO_INCREMENT,
   post_date DATE,
   group_id INT,
+  parent_post_id INT NULL,
   author VARCHAR(255),
   content LONGTEXT,
   PRIMARY KEY(post_id)
 );
 LOAD DATA INFILE '/var/lib/mysql-files/project/Posts.csv' IGNORE INTO TABLE Posts FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n' IGNORE 1 ROWS
-(post_id, post_date, group_id, author, content);
+(post_id, post_date, group_id, @parent_post_id, author, content)
+SET
+parent_post_id = NULLIF(@parent_post_id, '');
 
 -- ================================
 -- Adding Foreign Key relationships
@@ -97,6 +102,7 @@ LOAD DATA INFILE '/var/lib/mysql-files/project/Posts.csv' IGNORE INTO TABLE Post
 
 ALTER TABLE Posts
 ADD FOREIGN KEY (author) REFERENCES People(person_id),
+ADD FOREIGN KEY (parent_post_id) REFERENCES Posts(post_id),
 ADD FOREIGN KEY (group_id) REFERENCES Group_T(group_id);
 
 ALTER TABLE Auth
