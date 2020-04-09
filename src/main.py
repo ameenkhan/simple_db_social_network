@@ -10,9 +10,49 @@ query_login_auth = (
   "WHERE person_id=%s AND	pass=%s"
 )
 
-query_list_all_posts = (
-
+query_list_all_posts_lim_100 = (
+  "SELECT DISTINCT(post_id), post_date, author, content, group_id from Posts WHERE "
+	"author = %s "
+	"OR "
+	"author IN (SELECT follows_id FROM followers_people WHERE person_id = %s) "
+	"OR "
+	"group_id IN (SELECT group_id FROM followers_groups WHERE person_id = %s) "
+	"OR "
+	"post_id IN (SELECT DISTINCT(post_id) from post_topics WHERE topic_id IN (SELECT topic_id FROM followers_topics WHERE person_id = %s)) "
+	"ORDER BY(post_date) DESC "
+	"LIMIT 100;"
 )
+
+query_list_all_posts_no_lim = (
+  "SELECT DISTINCT(post_id), post_date, author, content, group_id from Posts WHERE "
+	"author = %s "
+	"OR "
+	"author IN (SELECT follows_id FROM followers_people WHERE person_id = %s) "
+	"OR "
+	"group_id IN (SELECT group_id FROM followers_groups WHERE person_id = %s) "
+	"OR "
+	"post_id IN (SELECT DISTINCT(post_id) from post_topics WHERE topic_id IN (SELECT topic_id FROM followers_topics WHERE person_id = %s)) "
+	"ORDER BY(post_date) DESC;" 
+)
+
+query_list_all_posts_your_posts = (
+  "SELECT DISTINCT(post_id), post_date, author, content, group_id from Posts WHERE author = %s ORDER BY(post_date) DESC;"
+)
+
+query_list_all_posts_unread = (
+  "SELECT DISTINCT(post_id), post_date, author, content, group_id from Posts WHERE "
+	"( "
+	"	author IN (SELECT follows_id FROM followers_people WHERE person_id = %s) "
+	"	OR "
+	"	group_id IN (SELECT group_id FROM followers_groups WHERE person_id = %s) "
+	"	OR "
+	"	post_id IN (SELECT DISTINCT(post_id) from post_topics WHERE topic_id IN (SELECT topic_id FROM followers_topics WHERE person_id = %s)) "
+	") "
+	"AND "
+	"post_date > (SELECT login_date FROM Auth WHERE person_id = %s) "
+	"ORDER BY(post_date) DESC;"
+)
+
 
 try:
   cnx = mysql.connector.connect(user='user_ece356_test', password='user_ece356_test',
@@ -53,11 +93,55 @@ else:
     print(
       "---\n"
       "List posts\n"
-      "1. List all posts with a limit on posts shown\n"
-      "2. List all posts without a limit on posts shown\n"
-      "3. List all of your posts\n"
+      "1. Go Back\n"
+      "2. List all posts with a limit of 100 posts shown\n"
+      "3. List all posts without a limit on posts shown\n"
+      "4. List all of your posts\n"
     )
+    selection = input()
+    if selection == "1":
+      main_1()
+
+    elif selection == "2":
+      cursor.execute(query_list_all_posts_lim_100, (PERSON_ID, PERSON_ID, PERSON_ID, PERSON_ID))
+      print("Listing all posts with a limit of 100 posts shown")
+      for post_id, post_date, author, content, group_id in cursor:
+        print(f"Post ID: {post_id}")
+        print(f"Post Date: {post_date}")
+        if group_id:
+          print(f"Group ID: {group_id}")
+        else:
+          print("No group associated with this post")
+        print(f"Author: {author}")
+        print(str(content), "\n\n")
+
+    elif selection == "3":
+      cursor.execute(query_list_all_posts_no_lim, (PERSON_ID, PERSON_ID, PERSON_ID, PERSON_ID))
+      print("Listing all posts you follow")
+      for post_id, post_date, author, content, group_id in cursor:
+        print(f"Post ID: {post_id}")
+        print(f"Post Date: {post_date}")
+        if group_id:
+          print(f"Group ID: {group_id}")
+        else:
+          print("No group associated with this post")
+        print(f"Author: {author}")
+        print(str(content), "\n\n")
     
+    elif selection == "4":
+      cursor.execute(query_list_all_posts_your_posts, (PERSON_ID,))
+      print("Listing all posts with a limit of 100 posts shown")
+      for post_id, post_date, author, content, group_id  in cursor:
+        print(f"Post ID: {post_id}")
+        print(f"Post Date: {post_date}")
+        if group_id != 0:
+          print(f"Group ID: {group_id}")
+        else:
+          print("No group associated with this post")
+        print(f"Author: {author}")
+        print(str(content), "\n\n")
+    
+    main_1_2()
 
   def main_1():
     print(
@@ -66,18 +150,40 @@ else:
       "1. Go Back\n"
       "2. List posts\n"
       "3. List unread posts\n"
-      "4. Create a Post\n"
-      "5. View a specific post\n"
+      "4. Create a Post (to reply to a post you must first view it - option 5)\n"
+      "5. View a specific post\n" #give the option to give a +/- 1 or reply here
     )
     
     selection = input()
     if selection == "1":
       main()
-    if selection == "2":
+
+    elif selection == "2":
       main_1_2()
     
-    elif selection == "2":
-      pass
+    elif selection == "3":
+      cursor.execute(query_list_all_posts_unread, (PERSON_ID, PERSON_ID, PERSON_ID, PERSON_ID))
+      print("Listing all unread posts (determined by login time)")
+      for post_id, post_date, author, content, group_id in cursor:
+        print(f"Post ID: {post_id}")
+        print(f"Post Date: {post_date}")
+        if group_id:
+          print(f"Group ID: {group_id}")
+        else:
+          print("No group associated with this post")
+        print(f"Author: {author}")
+        print(str(content), "\n\n")
+      main_1()
+
+    elif selection == "4":
+      print(
+        "\nCreating a post"
+        "What is the post content?\n"
+      )
+      cr_content = input()
+      
+      
+      main_1()
 
 
   def main_2():
