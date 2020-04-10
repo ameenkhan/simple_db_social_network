@@ -11,7 +11,7 @@ query_login_auth = (
 )
 
 query_list_all_posts_lim_100 = (
-  "SELECT DISTINCT(post_id), post_date, author, content, group_id from Posts WHERE "
+  "SELECT DISTINCT(post_id), post_date, author, content, group_name from Posts LEFT JOIN Group_T USING (group_id) WHERE "
 	"author = %s "
 	"OR "
 	"author IN (SELECT follows_id FROM followers_people WHERE person_id = %s) "
@@ -24,7 +24,7 @@ query_list_all_posts_lim_100 = (
 )
 
 query_list_all_posts_no_lim = (
-  "SELECT DISTINCT(post_id), post_date, author, content, group_id from Posts WHERE "
+  "SELECT DISTINCT(post_id), post_date, author, content, group_name from Posts LEFT JOIN Group_T USING (group_id) WHERE "
 	"author = %s "
 	"OR "
 	"author IN (SELECT follows_id FROM followers_people WHERE person_id = %s) "
@@ -36,21 +36,25 @@ query_list_all_posts_no_lim = (
 )
 
 query_list_all_posts_your_posts = (
-  "SELECT DISTINCT(post_id), post_date, author, content, group_id from Posts WHERE author = %s ORDER BY(post_date) DESC;"
+  "SELECT DISTINCT(post_id), post_date, author, content, group_name from Posts LEFT JOIN Group_T USING (group_id) WHERE author = %s ORDER BY(post_date) DESC;"
 )
 
 query_list_all_posts_unread = (
-  "SELECT DISTINCT(post_id), post_date, author, content, group_id from Posts WHERE "
-	"( "
-	"	author IN (SELECT follows_id FROM followers_people WHERE person_id = %s) "
-	"	OR "
-	"	group_id IN (SELECT group_id FROM followers_groups WHERE person_id = %s) "
-	"	OR "
-	"	post_id IN (SELECT DISTINCT(post_id) from post_topics WHERE topic_id IN (SELECT topic_id FROM followers_topics WHERE person_id = %s)) "
-	") "
-	"AND "
-	"post_date > (SELECT login_date FROM Auth WHERE person_id = %s) "
-	"ORDER BY(post_date) DESC;"
+  "SELECT DISTINCT(post_id), post_date, author, content, group_name FROM Posts LEFT JOIN Group_T USING (group_id) WHERE "
+    "( "
+      "author IN (SELECT follows_id FROM followers_people WHERE person_id = %s) "
+      "OR "
+      "group_id IN (SELECT group_id FROM followers_groups WHERE person_id = %s) "
+      "OR "
+      "post_id IN (SELECT DISTINCT(post_id) from post_topics WHERE topic_id IN (SELECT topic_id FROM followers_topics WHERE person_id = %s)) "
+    ") "
+    "AND "
+    "post_date > (SELECT login_date FROM Auth WHERE person_id = %s) "
+  "ORDER BY(post_date) DESC; "
+)
+
+query_list_topics_for_post = (
+  "SELECT topic_name FROM post_topics LEFT JOIN Topics USING (topic_id) WHERE post_id = %s;"
 )
 
 query_list_groups_user_follows = (
@@ -58,7 +62,7 @@ query_list_groups_user_follows = (
 )
 
 query_user_follows_group = (
-  "SELECT gro
+  "SELECT gro"
 )
 
 try:
@@ -75,7 +79,8 @@ except mysql.connector.Error as err:
 else:
   print('\n\nConnection to social media successfully established!\n\n')
 
-  cursor = cnx.cursor(buffered=True)
+  cursor    = cnx.cursor(buffered=True)
+  cursor2   = cnx.cursor(buffered=True)
   login_try = 0
   
   while True:
@@ -112,41 +117,47 @@ else:
     elif selection == "2":
       cursor.execute(query_list_all_posts_lim_100, (PERSON_ID, PERSON_ID, PERSON_ID, PERSON_ID))
       print("Listing all posts with a limit of 100 posts shown")
-      for post_id, post_date, author, content, group_id in cursor:
-        print(f"Post ID: {post_id}")
-        print(f"Post Date: {post_date}")
-        if group_id:
-          print(f"Group ID: {group_id}")
-        else:
-          print("No group associated with this post")
-        print(f"Author: {author}")
-        print(str(content), "\n\n")
+      for post_id, post_date, author, content, group_name in cursor:
+        print(f"Post ID   : {post_id}")
+        print(f"Post Date : {post_date}")
+        print(f"Group     : {group_name}")
+        print(f"Topics    :", end = " ")
+        cursor2.execute(query_list_topics_for_post, (post_id,))
+        for topic_name in cursor2:
+          print(topic_name[0], end = " | ")
+        print()
+        print(f"Author    : {author}")
+        print(content, "\n\n")
 
     elif selection == "3":
       cursor.execute(query_list_all_posts_no_lim, (PERSON_ID, PERSON_ID, PERSON_ID, PERSON_ID))
       print("Listing all posts you follow")
-      for post_id, post_date, author, content, group_id in cursor:
-        print(f"Post ID: {post_id}")
-        print(f"Post Date: {post_date}")
-        if group_id:
-          print(f"Group ID: {group_id}")
-        else:
-          print("No group associated with this post")
-        print(f"Author: {author}")
-        print(str(content), "\n\n")
+      for post_id, post_date, author, content, group_name in cursor:
+        print(f"Post ID   : {post_id}")
+        print(f"Post Date : {post_date}")
+        print(f"Group     : {group_name}")
+        print(f"Topics    :", end = " ")
+        cursor2.execute(query_list_topics_for_post, (post_id,))
+        for topic_name in cursor2:
+          print(topic_name[0], end = " | ")
+        print()
+        print(f"Author    : {author}")
+        print(content, "\n\n")
     
     elif selection == "4":
       cursor.execute(query_list_all_posts_your_posts, (PERSON_ID,))
-      print("Listing all posts with a limit of 100 posts shown")
-      for post_id, post_date, author, content, group_id  in cursor:
-        print(f"Post ID: {post_id}")
-        print(f"Post Date: {post_date}")
-        if group_id != 0:
-          print(f"Group ID: {group_id}")
-        else:
-          print("No group associated with this post")
-        print(f"Author: {author}")
-        print(str(content), "\n\n")
+      print("Listing all of your posts")
+      for post_id, post_date, author, content, group_name in cursor:
+        print(f"Post ID   : {post_id}")
+        print(f"Post Date : {post_date}")
+        print(f"Group     : {group_name}")
+        print(f"Topics    :", end = " ")
+        cursor2.execute(query_list_topics_for_post, (post_id,))
+        for topic_name in cursor2:
+          print(topic_name[0], end = " | ")
+        print()
+        print(f"Author    : {author}")
+        print(content, "\n\n")
     
     main_1_2()
 
@@ -171,15 +182,17 @@ else:
     elif selection == "3":
       cursor.execute(query_list_all_posts_unread, (PERSON_ID, PERSON_ID, PERSON_ID, PERSON_ID))
       print("Listing all unread posts (determined by login time)")
-      for post_id, post_date, author, content, group_id in cursor:
-        print(f"Post ID: {post_id}")
-        print(f"Post Date: {post_date}")
-        if group_id:
-          print(f"Group ID: {group_id}")
-        else:
-          print("No group associated with this post")
-        print(f"Author: {author}")
-        print(str(content), "\n\n")
+      for post_id, post_date, author, content, group_name in cursor:
+        print(f"Post ID   : {post_id}")
+        print(f"Post Date : {post_date}")
+        print(f"Group     : {group_name}")
+        print(f"Topics    :", end = " ")
+        cursor2.execute(query_list_topics_for_post, (post_id,))
+        for topic_name in cursor2:
+          print(topic_name[0], end = " | ")
+        print()
+        print(f"Author    : {author}")
+        print(content, "\n\n")
       main_1()
 
     elif selection == "4":
