@@ -53,6 +53,13 @@ query_list_all_posts_unread = (
 	"ORDER BY(post_date) DESC;"
 )
 
+query_list_groups_user_follows = (
+  "SELECT group_name FROM Group_T WHERE group_id IN (SELECT group_id FROM followers_groups WHERE person_id = %s) OR group_id = 0;"
+)
+
+query_user_follows_group = (
+  "SELECT gro
+)
 
 try:
   cnx = mysql.connector.connect(user='user_ece356_test', password='user_ece356_test',
@@ -177,12 +184,24 @@ else:
 
     elif selection == "4":
       print(
-        "\nCreating a post"
+        "\nCreating a post\n"
         "What is the post content?\n"
       )
       cr_content = input()
+
+      print(
+        "\nThese are the groups you follow\n"
+      )
+      cursor.execute(query_list_groups_user_follows, (PERSON_ID,))
+
+      for group_name in cursor:
+        print(group_name[0])
+
+      print("\n\nWhich group would you like to post in?\n")
       
-      
+      cr_group = input()
+      cursor.execute(query_user_follows_group)
+
       main_1()
 
 
