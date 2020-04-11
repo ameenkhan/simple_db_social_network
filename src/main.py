@@ -1,4 +1,5 @@
 import mysql.connector # activate venv
+import time
 from mysql.connector import errorcode
 
 PERSON_ID = ""
@@ -58,11 +59,18 @@ query_list_topics_for_post = (
 )
 
 query_list_groups_user_follows = (
-  "SELECT group_name FROM Group_T WHERE group_id IN (SELECT group_id FROM followers_groups WHERE person_id = %s) OR group_id = 0;"
+  "SELECT group_name, group_id FROM Group_T WHERE group_id IN (SELECT group_id FROM followers_groups WHERE person_id = %s) OR group_id = 0;"
 )
 
-query_user_follows_group = (
-  "SELECT gro"
+query_list_topics_user_follows = (
+  "SELECT topic_id, topic_name FROM Topics WHERE topic_id IN (SELECT topic_id FROM followers_topics WHERE person_id = %s);"
+)
+
+# group_id, PERSON_ID, content
+query_create_new_post = (
+  "START TRANSACTION;"
+  "INSERT INTO Posts (post_date, group_id, author, content) VALUES(CURDATE(),'{0}','{1}','{2}');"
+  "SET @p_id = (SELECT LAST_INSERT_ID());"
 )
 
 try:
@@ -166,9 +174,9 @@ else:
       "---\n"
       "Post Activities\n"
       "1. Go Back\n"
-      "2. List posts\n"
-      "3. List unread posts\n"
-      "4. Create a Post (to reply to a post you must first view it - option 5)\n"
+      "2. List posts\n"                                                           # DONE
+      "3. List unread posts\n"                                                    # DONE
+      "4. Create a Post (to reply to a post you must first view it - option 5)\n" 
       "5. View a specific post\n" #give the option to give a +/- 1 or reply here
     )
     
@@ -204,17 +212,69 @@ else:
 
       print(
         "\nThese are the groups you follow\n"
+        "Group Name -> Group ID\n\n"
       )
       cursor.execute(query_list_groups_user_follows, (PERSON_ID,))
 
-      for group_name in cursor:
-        print(group_name[0])
+      list_group_id = list()
+      for group_name, group_id in cursor:
+        print(f"{group_name} -> {group_id}")
+        list_group_id.append(group_id)
 
-      print("\n\nWhich group would you like to post in?\n")
+      print("\n\nWhich group would you like to post in?\nEnter a group id\n")
       
       cr_group = input()
-      cursor.execute(query_user_follows_group)
+      cr_group = int(cr_group)
 
+      if cr_group not in list_group_id:
+        print("ERROR creating post. You did not enter a group_id of a group you follow.\n")
+        pass
+      else:
+        print(
+          "---"
+          "\nThese are the topics you follow\n"
+          "Topic Name -> Topic ID\n\n"
+        )
+        list_topic_id = list()
+        cursor.execute(query_list_topics_user_follows, (PERSON_ID,))
+        for topic_id, topic_name in cursor:
+          print(f"{topic_name} -> {topic_id}")
+          list_topic_id.append(topic_id)
+        
+        print('\n\n---\nWhich topics would you like to post in?\nEnter the group ids seperated by commas ","\n')
+      
+        topic_in = input()
+        cr_topics_split = topic_in.split(",")
+
+        topic_err = False
+        cr_topics = list()
+
+        for topic in cr_topics_split:
+          topic = int(topic)
+          cr_topics.append(topic)
+          if topic not in list_topic_id:
+            print("\nERROR creating post. You entered id(s) of topic(s) you do not follow.\n\n")
+            topic_err = True
+            break
+        
+        if topic_err:
+          pass
+        else:
+          # Creating transaction query
+          new_post = query_create_new_post
+          new_post = new_post.format(cr_group, PERSON_ID, cr_content)
+          for i in cr_topics:
+            new_post += f"INSERT INTO post_topics (post_id, topic_id) VALUES(@p_id, {i});"
+          new_post += "COMMIT;"
+          
+          cursor.execute(new_post, multi=True)
+          # CURSOR DEAD HERE
+          
+          print("\n\n", cursor.__dict__,"\n\n")
+
+          print("\nPost created successfully!")
+
+          
       main_1()
 
 
