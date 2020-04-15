@@ -72,6 +72,19 @@ query_create_new_post = (
   "INSERT INTO Posts (post_date, group_id, author, content) VALUES(CURDATE(),'{0}','{1}','{2}');"
 )
 
+# group_id, parent_post_id, PERSON_ID, content
+query_create_reply = (
+  "INSERT INTO Posts (post_date, group_id, parent_post_id, author, content) VALUES(CURDATE(),'{0}', {1}, '{2}','{3}');"
+)
+
+query_update_react_pos = (
+  "UPDATE Posts SET react_pos = react_pos + 1 WHERE post_id = %s;"
+)
+
+query_update_react_neg = (
+  "UPDATE Posts SET react_neg = react_neg + 1 WHERE post_id = %s;"
+)
+
 query_list_post_details = (
   "SELECT post_id, post_date, group_name, parent_post_id, author, content, react_pos, react_neg FROM "
   "(SELECT * FROM Posts WHERE post_id = %s) as T JOIN Group_T USING(group_id);"
@@ -113,6 +126,109 @@ else:
 
     login_try +=1
 
+  # Create a post
+  def create_post(reply_post_id=None):
+    print(
+      "What is the post content?\n"
+    )
+      
+    cr_content = input()
+
+    print(
+      "\nThese are the groups you follow\n"
+      "Group Name -> Group ID\n\n"
+    )
+    cursor.execute(query_list_groups_user_follows, (PERSON_ID,))
+
+    list_group_id = list()
+    for group_name, group_id in cursor:
+      print(f"{group_name} -> {group_id}")
+      list_group_id.append(group_id)
+
+    print("\n\nWhich group would you like to post in?\nEnter a group id\n")
+    
+    cr_group = input()
+    cr_group = int(cr_group)
+
+    if cr_group not in list_group_id:
+      print("ERROR creating post. You did not enter a group_id of a group you follow.\n")
+      pass
+    else:
+      print(
+        "---"
+        "\nThese are the topics you follow\n"
+        "Topic Name -> Topic ID\n\n"
+      )
+      list_topic_id = list()
+      cursor.execute(query_list_topics_user_follows, (PERSON_ID,))
+      for topic_id, topic_name in cursor:
+        print(f"{topic_name} -> {topic_id}")
+        list_topic_id.append(topic_id)
+      
+      print('\n\n---\nWhich topics would you like to post in?\nEnter the group ids seperated by commas ","\n')
+    
+      topic_in = input()
+      cr_topics_split = topic_in.split(",")
+
+      topic_err = False
+      cr_topics = list()
+
+      for topic in cr_topics_split:
+        topic = int(topic)
+        cr_topics.append(topic)
+        if topic not in list_topic_id:
+          print("\nERROR creating post. You entered id(s) of topic(s) you do not follow.\n\n")
+          topic_err = True
+          break
+      
+      if topic_err:
+        pass
+      else:
+        # Creating transaction query
+
+        # Determine if this new post is a reply or a new post
+        if reply_post_id:
+          new_post = query_create_reply
+          new_post = new_post.format(cr_group, reply_post_id, PERSON_ID, cr_content)
+        else:
+          new_post = query_create_new_post
+          new_post = new_post.format(cr_group, PERSON_ID, cr_content)
+        
+        cnx.commit()
+        cnx.start_transaction()
+        print(f"\n{new_post}\n\n")
+        cursor.execute(new_post)
+        cursor.execute("SET @p_id = (SELECT LAST_INSERT_ID());")
+        for i in cr_topics:
+          cursor.execute(f"INSERT INTO post_topics (post_id, topic_id) VALUES(@p_id, {i});")
+        cnx.commit()
+        
+        cursor.execute("SELECT @p_id;")
+        for p_id in cursor:
+          post_id = p_id[0]
+        
+        print("\nYour post's ID is:", post_id)
+        print("\nPost created successfully!\n\n")
+
+  # List a post details
+  def post_detail(p_id):
+    cursor.execute(query_list_post_details, (p_id,))
+    for res in cursor:
+          print(f"Post ID   : {res[0]}")
+          print(f"Post Date : {res[1]}")
+          print(f"Group     : {res[2]}")
+          print(f"Topics    :", end = " ")
+          cursor2.execute(query_list_topics_for_post, (res[0],))
+          for topic_name in cursor2:
+            print(topic_name[0], end = " | ")
+          print()
+          print(f"Author    : {res[4]}")
+          print(f":)        : {res[6]}")
+          print(f":(        : {res[7]}")
+          print(res[5], "\n\n")
+    print()
+          
+  # List Posts options
   def main_1_2():
     print(
       "---\n"
@@ -179,16 +295,41 @@ else:
     
     main_1_2()
 
+  # Specific post activities
+  def main_1_5(p_id):
+    post_detail(p_id)
+    print(
+      "1. Go Back\n"
+      "2. React with a :)\n"
+      "3. React with a :(\n"
+      "4. Respond with a reply post\n"
+    )
+    selection = input()
+
+    if selection == "1":
+      main_1()
+    elif selection == "2":
+      cursor.execute(query_update_react_pos, (p_id,))
+      main_1_5(p_id)
+    elif selection == "3":
+      cursor.execute(query_update_react_neg, (p_id,))
+      main_1_5(p_id)
+    elif selection == '4':
+      print(f"\nCreating a reply for post: {p_id}\n")
+      print("\nCreating a new post\n")
+      create_post(p_id)
+      main_1()
+
   def main_1():
     # give the option to give a +/- 1 or reply in option 5
     print(
-      "---\n"
+      "\n---\n"
       "Post Activities\n"
       "1. Go Back\n"
       "2. List posts\n"                                                           # DONE
       "3. List unread posts\n"                                                    # DONE
       "4. Create a Post (to reply to a post you must first view it - option 5)\n" # DONE
-      "5. View a specific post\n"                                                 
+      "5. View a specific post\n"                                                 # DONE
     )
     
     selection = input()
@@ -217,81 +358,8 @@ else:
       main_1()
 
     elif selection == "4":
-      print(
-        "\nCreating a post\n"
-        "What is the post content?\n"
-      )
-      cr_content = input()
-
-      print(
-        "\nThese are the groups you follow\n"
-        "Group Name -> Group ID\n\n"
-      )
-      cursor.execute(query_list_groups_user_follows, (PERSON_ID,))
-
-      list_group_id = list()
-      for group_name, group_id in cursor:
-        print(f"{group_name} -> {group_id}")
-        list_group_id.append(group_id)
-
-      print("\n\nWhich group would you like to post in?\nEnter a group id\n")
-      
-      cr_group = input()
-      cr_group = int(cr_group)
-
-      if cr_group not in list_group_id:
-        print("ERROR creating post. You did not enter a group_id of a group you follow.\n")
-        pass
-      else:
-        print(
-          "---"
-          "\nThese are the topics you follow\n"
-          "Topic Name -> Topic ID\n\n"
-        )
-        list_topic_id = list()
-        cursor.execute(query_list_topics_user_follows, (PERSON_ID,))
-        for topic_id, topic_name in cursor:
-          print(f"{topic_name} -> {topic_id}")
-          list_topic_id.append(topic_id)
-        
-        print('\n\n---\nWhich topics would you like to post in?\nEnter the group ids seperated by commas ","\n')
-      
-        topic_in = input()
-        cr_topics_split = topic_in.split(",")
-
-        topic_err = False
-        cr_topics = list()
-
-        for topic in cr_topics_split:
-          topic = int(topic)
-          cr_topics.append(topic)
-          if topic not in list_topic_id:
-            print("\nERROR creating post. You entered id(s) of topic(s) you do not follow.\n\n")
-            topic_err = True
-            break
-        
-        if topic_err:
-          pass
-        else:
-          # Creating transaction query
-          new_post = query_create_new_post
-          new_post = new_post.format(cr_group, PERSON_ID, cr_content)
-          
-          cnx.commit()
-          cnx.start_transaction()
-          cursor.execute(new_post)
-          cursor.execute("SET @p_id = (SELECT LAST_INSERT_ID());")
-          for i in cr_topics:
-            cursor.execute(f"INSERT INTO post_topics (post_id, topic_id) VALUES(@p_id, {i});")
-          cnx.commit()
-          
-          cursor.execute("SELECT @p_id;")
-          for p_id in cursor:
-            post_id = p_id[0]
-          
-          print("\nYour post's ID is:", post_id)
-          print("\nPost created successfully!\n\n")
-
+      print("\nCreating a new post\n")
+      create_post()
       main_1()
 
     elif selection == "5":
@@ -299,8 +367,13 @@ else:
         "\nEnter a post id to view it's content:\n"
       )
       u_post_id = input()
+      cursor.execute(query_list_post_details, (u_post_id,))
 
-
+      if cursor.rowcount == 0:
+        print("\nNo post exists with that id...\n")
+        main_1()
+      else:
+        main_1_5(u_post_id)
 
   def main_2():
     print(
