@@ -5,12 +5,14 @@ from mysql.connector import errorcode
 PERSON_ID = ""
 LOGIN_DATE = ""
 
+# username, password
 query_login_auth = (
   "SELECT fname, lname, login_date FROM "
   "People NATURAL JOIN	Auth "
   "WHERE person_id=%s AND	pass=%s"
 )
 
+# PERSON_ID, PERSON_ID, PERSON_ID, PERSON_ID
 query_list_all_posts_lim_100 = (
   "SELECT DISTINCT(post_id), post_date, author, content, group_name, react_pos, react_neg from Posts LEFT JOIN Group_T USING (group_id) WHERE "
 	"author = %s "
@@ -24,6 +26,7 @@ query_list_all_posts_lim_100 = (
 	"LIMIT 100;"
 )
 
+# PERSON_ID, PERSON_ID, PERSON_ID, PERSON_ID
 query_list_all_posts_no_lim = (
   "SELECT DISTINCT(post_id), post_date, author, content, group_name, react_pos, react_neg from Posts LEFT JOIN Group_T USING (group_id) WHERE "
 	"author = %s "
@@ -36,10 +39,12 @@ query_list_all_posts_no_lim = (
 	"ORDER BY(post_date) DESC;" 
 )
 
+# PERSON_ID
 query_list_all_posts_your_posts = (
   "SELECT DISTINCT(post_id), post_date, author, content, group_name, react_pos, react_neg from Posts LEFT JOIN Group_T USING (group_id) WHERE author = %s ORDER BY(post_date) DESC;"
 )
 
+# PERSON_ID, PERSON_ID, PERSON_ID, PERSON_ID
 query_list_all_posts_unread = (
   "SELECT DISTINCT(post_id), post_date, author, content, group_name, react_pos, react_neg FROM Posts LEFT JOIN Group_T USING (group_id) WHERE "
     "( "
@@ -54,12 +59,19 @@ query_list_all_posts_unread = (
   "ORDER BY(post_date) DESC; "
 )
 
+# PERSON_ID
 query_list_topics_for_post = (
   "SELECT topic_name FROM post_topics LEFT JOIN Topics USING (topic_id) WHERE post_id = %s;"
 )
 
+# PERSON_ID
 query_list_groups_user_follows = (
   "SELECT group_name, group_id FROM Group_T WHERE group_id IN (SELECT group_id FROM followers_groups WHERE person_id = %s) OR group_id = 0;"
+)
+
+# PERSON_ID
+query_list_groups_user_does_not_follow = (
+  "SELECT group_name, group_id FROM Group_T WHERE group_id NOT IN (SELECT group_id FROM followers_groups WHERE person_id = %s) OR group_id = 0;"
 )
 
 # PERSON_ID
@@ -106,6 +118,25 @@ query_update_react_neg = (
 query_list_post_details = (
   "SELECT post_id, post_date, group_name, parent_post_id, author, content, react_pos, react_neg FROM "
   "(SELECT * FROM Posts WHERE post_id = %s) as T JOIN Group_T USING(group_id);"
+)
+
+# user_id
+query_find_a_user = (
+  "SELECT * FROM People WHERE person_id = %s"
+)
+
+# topic_id, topic_id
+query_topic_details = (
+  "SELECT "
+  "  (SELECT COUNT(*) FROM post_topics WHERE topic_id = %s) As posts, "
+  "  (SELECT COUNT(*) FROM followers_topics WHERE topic_id = %s) As followers;"
+)
+
+# group_id, group_id
+query_group_details = (
+  "SELECT "
+  "  (SELECT COUNT(*) FROM Posts WHERE group_id = %s) As posts, "
+  "  (SELECT COUNT(*) FROM followers_groups WHERE group_id = %s) As followers;"
 )
 
 try:
@@ -444,8 +475,8 @@ else:
     print(
       "\n---\nEntities To Add\n"
       "1.   Go Back\n"
-      "2.   Follow a new Topic\n"
-      "3.   Follow a new Group\n"
+      "2.   Follow a new Topic\n"       # DONE
+      "3.   Follow a new Group\n"       #
       "4.   Follow a new Person\n"
     )
     selection = input()
@@ -460,7 +491,95 @@ else:
       cursor.execute(query_list_topics_user_does_not_follow, (PERSON_ID,))
       for topic_id, topic_name in cursor:
         print(f"{topic_name} -> {topic_id}")
+      print(
+        "\nEnter multiple Topic_IDs seperated by commas, to follow\n"
+      )
+      
+      u_topics_split = input()
+      u_topics_split = u_topics_split.split(",")
+
+      cnx.commit()
+      cnx.start_transaction()
+      for topic in u_topics_split:
+        topic = int(topic)
+        cursor.execute(f"INSERT INTO followers_topics (topic_id, person_id) VALUES({topic},'{PERSON_ID}')")        
+      cnx.commit()
+      print("\nSuccessfully following new topics\n")
+      main_3()
+    elif selection == "3":
+      print(
+        "\nThese are the groups you do not follow\n"
+        "Group Name -> Group_ID\n"
+      )
+
+      cursor.execute(query_list_groups_user_does_not_follow, (PERSON_ID,))
+      for group_name, group_id in cursor:
+        print(f"{group_name} -> {group_id}")
+      print(
+        "\nEnter multiple Group_IDs seperated by commas, to follow\n"
+      )
+      
+      u_groups_split = input()
+      u_groups_split = u_groups_split.split(",")
+
+      cnx.commit()
+      cnx.start_transaction()
+      for group in u_groups_split:
+        group = int(group)
+        cursor.execute(f"INSERT INTO followers_groups (group_id, person_id) VALUES({group},'{PERSON_ID}')")        
+      cnx.commit()
+      print("\nSuccessfully following new groups\n")
+      main_3()
+    elif selection == "4":
+      print("\nEnter a user id to follow the person if they exist\n")
+      u_person_id = input()
+      cursor.execute(query_find_a_user, (u_person_id,))
+      
+      if cursor.rowcount == 0:
+        print("\nPerson not found\n")
+        main_3()
+      else:
+        print(f"\nYou are now following {u_person_id}\n")
+        main_3()
+      
+  # Details of a Topic or Group
+  def main_4():
+    print(
+      "\nDetails of a Topic or a Group\n"
+      "1. Go Back\n"
+      "2. Details of a Topic\n"
+      "3. Details of a Group\n"
+    )
+
+    selection = input()
+    if selection == "1":
+      main()
+    elif selection == "2":
+      print("\nEnter a Topic ID to find out how many posts and followers it has\n")
+      u_topic_id = input()
+      cursor.execute(query_topic_details, (u_topic_id,u_topic_id))
+      cursor2.execute(f"SELECT topic_name FROM Topics WHERE topic_id = {u_topic_id}")
+      print("\n\n")
+      for res in cursor2:
+        print(f"The Topic - {res[0]}")
+      for posts, followers in cursor:
+        print(f"Posts: {posts}")
+        print(f"Followers: {followers}")
       print()
+      main_4()
+    elif selection == "3":
+      print("\nEnter a Group ID to find out how many posts and followers it has\n")
+      u_group_id = input()
+      cursor.execute(query_group_details, (u_group_id,u_group_id))
+      cursor2.execute(f"SELECT group_name FROM Group_T WHERE group_id = {u_group_id}")
+      print("\n\n")
+      for res in cursor2:
+        print(f"The group - {res[0]}")
+      for posts, followers in cursor:
+        print(f"Posts: {posts}")
+        print(f"Followers: {followers}")
+      print()
+      main_4()
 
   def main():
     print(
@@ -477,16 +596,12 @@ else:
     if selection == "-99":
       print("\nLogging off now.. Cya!\n\n")
       exit(1)
-
     elif selection == "1":
       main_1()
-
     elif selection == "2":
       main_2()
-
     elif selection == "3":
       main_3()
-
     elif selection == "4":
       main_4()
 
