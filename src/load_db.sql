@@ -88,11 +88,13 @@ CREATE TABLE Posts(
   group_id INT,
   parent_post_id INT NULL,
   author VARCHAR(255),
+  react_pos INT DEFAULT 0,
+  react_neg INT DEFAULT 0,
   content LONGTEXT,
   PRIMARY KEY(post_id)
 );
 LOAD DATA INFILE '/var/lib/mysql-files/project/Posts.csv' IGNORE INTO TABLE Posts FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n' IGNORE 1 ROWS
-(post_id, post_date, group_id, @parent_post_id, author, content)
+(post_id, post_date, group_id, @parent_post_id, author, react_pos, react_neg, content)
 SET
 parent_post_id = NULLIF(@parent_post_id, '');
 

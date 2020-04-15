@@ -12,7 +12,7 @@ query_login_auth = (
 )
 
 query_list_all_posts_lim_100 = (
-  "SELECT DISTINCT(post_id), post_date, author, content, group_name from Posts LEFT JOIN Group_T USING (group_id) WHERE "
+  "SELECT DISTINCT(post_id), post_date, author, content, group_name, react_pos, react_neg from Posts LEFT JOIN Group_T USING (group_id) WHERE "
 	"author = %s "
 	"OR "
 	"author IN (SELECT follows_id FROM followers_people WHERE person_id = %s) "
@@ -25,7 +25,7 @@ query_list_all_posts_lim_100 = (
 )
 
 query_list_all_posts_no_lim = (
-  "SELECT DISTINCT(post_id), post_date, author, content, group_name from Posts LEFT JOIN Group_T USING (group_id) WHERE "
+  "SELECT DISTINCT(post_id), post_date, author, content, group_name, react_pos, react_neg from Posts LEFT JOIN Group_T USING (group_id) WHERE "
 	"author = %s "
 	"OR "
 	"author IN (SELECT follows_id FROM followers_people WHERE person_id = %s) "
@@ -37,11 +37,11 @@ query_list_all_posts_no_lim = (
 )
 
 query_list_all_posts_your_posts = (
-  "SELECT DISTINCT(post_id), post_date, author, content, group_name from Posts LEFT JOIN Group_T USING (group_id) WHERE author = %s ORDER BY(post_date) DESC;"
+  "SELECT DISTINCT(post_id), post_date, author, content, group_name, react_pos, react_neg from Posts LEFT JOIN Group_T USING (group_id) WHERE author = %s ORDER BY(post_date) DESC;"
 )
 
 query_list_all_posts_unread = (
-  "SELECT DISTINCT(post_id), post_date, author, content, group_name FROM Posts LEFT JOIN Group_T USING (group_id) WHERE "
+  "SELECT DISTINCT(post_id), post_date, author, content, group_name, react_pos, react_neg FROM Posts LEFT JOIN Group_T USING (group_id) WHERE "
     "( "
       "author IN (SELECT follows_id FROM followers_people WHERE person_id = %s) "
       "OR "
@@ -70,6 +70,11 @@ query_list_topics_user_follows = (
 # group_id, PERSON_ID, content
 query_create_new_post = (
   "INSERT INTO Posts (post_date, group_id, author, content) VALUES(CURDATE(),'{0}','{1}','{2}');"
+)
+
+query_list_post_details = (
+  "SELECT post_id, post_date, group_name, parent_post_id, author, content, react_pos, react_neg FROM "
+  "(SELECT * FROM Posts WHERE post_id = %s) as T JOIN Group_T USING(group_id);"
 )
 
 try:
@@ -124,7 +129,7 @@ else:
     elif selection == "2":
       cursor.execute(query_list_all_posts_lim_100, (PERSON_ID, PERSON_ID, PERSON_ID, PERSON_ID))
       print("Listing all posts with a limit of 100 posts shown")
-      for post_id, post_date, author, content, group_name in cursor:
+      for post_id, post_date, author, content, group_name, react_pos, react_neg in cursor:
         print(f"Post ID   : {post_id}")
         print(f"Post Date : {post_date}")
         print(f"Group     : {group_name}")
@@ -134,12 +139,14 @@ else:
           print(topic_name[0], end = " | ")
         print()
         print(f"Author    : {author}")
+        print(f":)        : {react_pos}")
+        print(f":(        : {react_neg}")
         print(content, "\n\n")
 
     elif selection == "3":
       cursor.execute(query_list_all_posts_no_lim, (PERSON_ID, PERSON_ID, PERSON_ID, PERSON_ID))
       print("Listing all posts you follow")
-      for post_id, post_date, author, content, group_name in cursor:
+      for post_id, post_date, author, content, group_name, react_pos, react_neg in cursor:
         print(f"Post ID   : {post_id}")
         print(f"Post Date : {post_date}")
         print(f"Group     : {group_name}")
@@ -149,12 +156,14 @@ else:
           print(topic_name[0], end = " | ")
         print()
         print(f"Author    : {author}")
+        print(f":)        : {react_pos}")
+        print(f":(        : {react_neg}")
         print(content, "\n\n")
     
     elif selection == "4":
       cursor.execute(query_list_all_posts_your_posts, (PERSON_ID,))
       print("Listing all of your posts")
-      for post_id, post_date, author, content, group_name in cursor:
+      for post_id, post_date, author, content, group_name, react_pos, react_neg in cursor:
         print(f"Post ID   : {post_id}")
         print(f"Post Date : {post_date}")
         print(f"Group     : {group_name}")
@@ -164,11 +173,14 @@ else:
           print(topic_name[0], end = " | ")
         print()
         print(f"Author    : {author}")
+        print(f":)        : {react_pos}")
+        print(f":(        : {react_neg}")
         print(content, "\n\n")
     
     main_1_2()
 
   def main_1():
+    # give the option to give a +/- 1 or reply in option 5
     print(
       "---\n"
       "Post Activities\n"
@@ -176,7 +188,7 @@ else:
       "2. List posts\n"                                                           # DONE
       "3. List unread posts\n"                                                    # DONE
       "4. Create a Post (to reply to a post you must first view it - option 5)\n" # DONE
-      "5. View a specific post\n" #give the option to give a +/- 1 or reply here
+      "5. View a specific post\n"                                                 
     )
     
     selection = input()
@@ -189,7 +201,7 @@ else:
     elif selection == "3":
       cursor.execute(query_list_all_posts_unread, (PERSON_ID, PERSON_ID, PERSON_ID, PERSON_ID))
       print("Listing all unread posts (determined by login time)")
-      for post_id, post_date, author, content, group_name in cursor:
+      for post_id, post_date, author, content, group_name, react_pos, react_neg in cursor:
         print(f"Post ID   : {post_id}")
         print(f"Post Date : {post_date}")
         print(f"Group     : {group_name}")
@@ -199,6 +211,8 @@ else:
           print(topic_name[0], end = " | ")
         print()
         print(f"Author    : {author}")
+        print(f":)        : {react_pos}")
+        print(f":(        : {react_neg}")
         print(content, "\n\n")
       main_1()
 
@@ -280,6 +294,13 @@ else:
 
       main_1()
 
+    elif selection == "5":
+      print(
+        "\nEnter a post id to view it's content:\n"
+      )
+      u_post_id = input()
+
+
 
   def main_2():
     print(
@@ -293,7 +314,7 @@ else:
     print(
       "---\n"
       "What would you like to do?\nEnter the number for the following actions:\n\n"
-      "1.   Post Activities\n"
+      "1.   Post Activities\n"                                                    # DONE
       "2.   List the names of Topics, Groups, People you follow\n"
       "3.   Add Topics, Groups, People to follow/ join\n"
       "-99. Exit\n"
