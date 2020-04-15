@@ -66,11 +66,10 @@ query_list_topics_user_follows = (
   "SELECT topic_id, topic_name FROM Topics WHERE topic_id IN (SELECT topic_id FROM followers_topics WHERE person_id = %s);"
 )
 
+# The connector needs to start and commit the transaction using its cnx commands
 # group_id, PERSON_ID, content
 query_create_new_post = (
-  "START TRANSACTION;"
   "INSERT INTO Posts (post_date, group_id, author, content) VALUES(CURDATE(),'{0}','{1}','{2}');"
-  "SET @p_id = (SELECT LAST_INSERT_ID());"
 )
 
 try:
@@ -176,7 +175,7 @@ else:
       "1. Go Back\n"
       "2. List posts\n"                                                           # DONE
       "3. List unread posts\n"                                                    # DONE
-      "4. Create a Post (to reply to a post you must first view it - option 5)\n" 
+      "4. Create a Post (to reply to a post you must first view it - option 5)\n" # DONE
       "5. View a specific post\n" #give the option to give a +/- 1 or reply here
     )
     
@@ -263,18 +262,22 @@ else:
           # Creating transaction query
           new_post = query_create_new_post
           new_post = new_post.format(cr_group, PERSON_ID, cr_content)
+          
+          cnx.commit()
+          cnx.start_transaction()
+          cursor.execute(new_post)
+          cursor.execute("SET @p_id = (SELECT LAST_INSERT_ID());")
           for i in cr_topics:
-            new_post += f"INSERT INTO post_topics (post_id, topic_id) VALUES(@p_id, {i});"
-          new_post += "COMMIT;"
+            cursor.execute(f"INSERT INTO post_topics (post_id, topic_id) VALUES(@p_id, {i});")
+          cnx.commit()
           
-          cursor.execute(new_post, multi=True)
-          # CURSOR DEAD HERE
+          cursor.execute("SELECT @p_id;")
+          for p_id in cursor:
+            post_id = p_id[0]
           
-          print("\n\n", cursor.__dict__,"\n\n")
+          print("\nYour post's ID is:", post_id)
+          print("\nPost created successfully!\n\n")
 
-          print("\nPost created successfully!")
-
-          
       main_1()
 
 
