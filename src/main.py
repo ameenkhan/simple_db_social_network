@@ -39,6 +39,21 @@ query_list_all_posts_no_lim = (
 	"ORDER BY(post_date) DESC;" 
 )
 
+# {PERSON_ID}, {keyword}
+query_search_following_posts = (
+  "SELECT DISTINCT(post_id), post_date, author, content, group_name, react_pos, react_neg from Posts LEFT JOIN Group_T USING (group_id) WHERE "
+	"(author = '{0}' "
+	"OR "
+	"author IN (SELECT follows_id FROM followers_people WHERE person_id = '{0}') "
+	"OR "
+	"group_id IN (SELECT group_id FROM followers_groups WHERE person_id = '{0}') "
+	"OR "
+	"post_id IN (SELECT DISTINCT(post_id) from post_topics WHERE topic_id IN (SELECT topic_id FROM followers_topics WHERE person_id = '{0}'))) "
+	"AND "
+	"content LIKE '%{1}%' "
+	"ORDER BY(post_date) DESC;"
+)
+
 # PERSON_ID
 query_list_all_posts_your_posts = (
   "SELECT DISTINCT(post_id), post_date, author, content, group_name, react_pos, react_neg from Posts LEFT JOIN Group_T USING (group_id) WHERE author = %s ORDER BY(post_date) DESC;"
@@ -369,6 +384,7 @@ else:
       create_post(p_id)
       main_1()
 
+  # Post Activites
   def main_1():
     # give the option to give a +/- 1 or reply in option 5
     print(
@@ -379,15 +395,14 @@ else:
       "3. List unread posts\n"                                                    # DONE
       "4. Create a Post (to reply to a post you must first view it - option 5)\n" # DONE
       "5. View a specific post\n"                                                 # DONE
+      "6. Search for a post\n"                                                    # DONE
     )
     
     selection = input()
     if selection == "1":
       main()
-
     elif selection == "2":
       main_1_2()
-    
     elif selection == "3":
       cursor.execute(query_list_all_posts_unread, (PERSON_ID, PERSON_ID, PERSON_ID, PERSON_ID))
       print("Listing all unread posts (determined by login time)")
@@ -405,12 +420,10 @@ else:
         print(f":(        : {react_neg}")
         print(content, "\n\n")
       main_1()
-
     elif selection == "4":
       print("\nCreating a new post\n")
       create_post()
       main_1()
-
     elif selection == "5":
       print(
         "\nEnter a post id to view it's content:\n"
@@ -423,6 +436,27 @@ else:
         main_1()
       else:
         main_1_5(u_post_id)
+    elif selection == "6":
+      print("\nEnter a keyword to search through all posts you follow\n")
+      u_search = input()
+      search_query = query_search_following_posts.format(PERSON_ID, u_search)
+      print(f"\n{search_query}\n\n\n")
+      cursor.execute(search_query)
+      print(f"\nAll posts containing {u_search}:\n")
+      for post_id, post_date, author, content, group_name, react_pos, react_neg in cursor:
+        print(f"Post ID   : {post_id}")
+        print(f"Post Date : {post_date}")
+        print(f"Group     : {group_name}")
+        print(f"Topics    :", end = " ")
+        cursor2.execute(query_list_topics_for_post, (post_id,))
+        for topic_name in cursor2:
+          print(topic_name[0], end = " | ")
+        print()
+        print(f"Author    : {author}")
+        print(f":)        : {react_pos}")
+        print(f":(        : {react_neg}")
+        print(content, "\n\n")
+      main_1()
 
   # Entities you follow
   def main_2():
@@ -468,7 +502,6 @@ else:
         print(f"{fname} | {lname} | {person_id}")
       print()
       main_2()
-
 
   # Add Entities to follow
   def main_3():
