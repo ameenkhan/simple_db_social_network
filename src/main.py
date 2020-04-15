@@ -62,8 +62,23 @@ query_list_groups_user_follows = (
   "SELECT group_name, group_id FROM Group_T WHERE group_id IN (SELECT group_id FROM followers_groups WHERE person_id = %s) OR group_id = 0;"
 )
 
+# PERSON_ID
 query_list_topics_user_follows = (
   "SELECT topic_id, topic_name FROM Topics WHERE topic_id IN (SELECT topic_id FROM followers_topics WHERE person_id = %s);"
+)
+
+# PERSON_ID
+query_list_topics_user_does_not_follow = (
+  "SELECT topic_id, topic_name FROM Topics WHERE topic_id NOT IN (SELECT topic_id FROM followers_topics WHERE person_id = %s);"
+)
+
+# PERSON_ID
+query_list_people_user_follows = (
+  "SELECT fname, lname, person_id FROM "
+	"(SELECT follows_id FROM followers_people WHERE person_id = %s) as x "
+	"LEFT JOIN "
+	"People "
+	"ON x.follows_id = People.person_id;"
 )
 
 # The connector needs to start and commit the transaction using its cnx commands
@@ -77,14 +92,17 @@ query_create_reply = (
   "INSERT INTO Posts (post_date, group_id, parent_post_id, author, content) VALUES(CURDATE(),'{0}', {1}, '{2}','{3}');"
 )
 
+#POST_ID
 query_update_react_pos = (
   "UPDATE Posts SET react_pos = react_pos + 1 WHERE post_id = %s;"
 )
 
+#POST_ID
 query_update_react_neg = (
   "UPDATE Posts SET react_neg = react_neg + 1 WHERE post_id = %s;"
 )
 
+#POST_ID
 query_list_post_details = (
   "SELECT post_id, post_date, group_name, parent_post_id, author, content, react_pos, react_neg FROM "
   "(SELECT * FROM Posts WHERE post_id = %s) as T JOIN Group_T USING(group_id);"
@@ -375,21 +393,83 @@ else:
       else:
         main_1_5(u_post_id)
 
+  # Entities you follow
   def main_2():
     print(
+        "\n---\nEntities You Follow\n"
         "1.   Go Back\n"
         "2.   List Topics you follow\n"
         "3.   List Groups you follow\n"
         "4.   List People you follow\n"
       )
-  
+    selection = input()
+    if selection == "1":
+      main()
+    elif selection == "2":
+      print(
+        "---"
+        "\nThese are the topics you follow\n"
+        "Topic Name -> Topic ID\n\n"
+      )
+      cursor.execute(query_list_topics_user_follows, (PERSON_ID,))
+      for topic_id, topic_name in cursor:
+        print(f"{topic_name} -> {topic_id}")
+      print()
+      main_2()
+    elif selection == "3":
+      print(
+        "\nThese are the groups you follow\n"
+        "Group Name -> Group ID\n\n"
+      )
+      cursor.execute(query_list_groups_user_follows, (PERSON_ID,))
+      for group_name, group_id in cursor:
+        print(f"{group_name} -> {group_id}")
+      print()
+      main_2()
+    elif selection == "4":
+      print(
+        "\nThese are the people you follow\n"
+        "First Name | Last Name | Their User ID\n\n"
+      )
+      cursor.execute(query_list_people_user_follows, (PERSON_ID,))
+      
+      for fname, lname, person_id in cursor:
+        print(f"{fname} | {lname} | {person_id}")
+      print()
+      main_2()
+
+
+  # Add Entities to follow
+  def main_3():
+    print(
+      "\n---\nEntities To Add\n"
+      "1.   Go Back\n"
+      "2.   Follow a new Topic\n"
+      "3.   Follow a new Group\n"
+      "4.   Follow a new Person\n"
+    )
+    selection = input()
+    if selection == "1":
+      main()
+    elif selection == "2":
+      print(
+        "\nThese are the topics you do not follow\n"
+        "Topics Name -> Topic_ID\n"
+      )
+
+      cursor.execute(query_list_topics_user_does_not_follow, (PERSON_ID,))
+      for topic_id, topic_name in cursor:
+        print(f"{topic_name} -> {topic_id}")
+      print()
+
   def main():
     print(
       "---\n"
       "What would you like to do?\nEnter the number for the following actions:\n\n"
       "1.   Post Activities\n"                                                    # DONE
       "2.   List the names of Topics, Groups, People you follow\n"
-      "3.   Add Topics, Groups, People to follow/ join\n"
+      "3.   Add Topics, Groups, People to follow\n"
+      "4.   Details of a Topic or Group\n"
       "-99. Exit\n"
       "\n"
     )
@@ -405,6 +485,9 @@ else:
       main_2()
 
     elif selection == "3":
-      print("\noptions for 3\n")
+      main_3()
+
+    elif selection == "4":
+      main_4()
 
   main()
