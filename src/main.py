@@ -278,19 +278,19 @@ else:
   def post_detail(p_id):
     cursor.execute(query_list_post_details, (p_id,))
     for res in cursor:
-          print(f"Post ID   : {res[0]}")
-          print(f"Post Date : {res[1]}")
-          print(f"Group     : {res[2]}")
-          print(f"Topics    :", end = " ")
-          cursor2.execute(query_list_topics_for_post, (res[0],))
-          for topic_name in cursor2:
-            print(topic_name[0], end = " | ")
-          print()
-          print(f"Reply To  : {parent_post_id}")
-          print(f"Author    : {res[4]}")
-          print(f":)        : {res[6]}")
-          print(f":(        : {res[7]}")
-          print(res[5], "\n\n")
+      print(f"Post ID   : {res[0]}")
+      print(f"Post Date : {res[1]}")
+      print(f"Group     : {res[2]}")
+      print(f"Topics    :", end = " ")
+      cursor2.execute(query_list_topics_for_post, (res[0],))
+      for topic_name in cursor2:
+        print(topic_name[0], end = " | ")
+      print()
+      print(f"Reply To  : {res[3]}")
+      print(f"Author    : {res[4]}")
+      print(f":)        : {res[6]}")
+      print(f":(        : {res[7]}")
+      print(res[5], "\n\n")
     print()
           
   # List Posts options
@@ -445,10 +445,9 @@ else:
       print("\nEnter a keyword to search through all posts you follow\n")
       u_search = input()
       search_query = query_search_following_posts.format(PERSON_ID, u_search)
-      print(f"\n{search_query}\n\n\n")
       cursor.execute(search_query)
       print(f"\nAll posts containing {u_search}:\n")
-      for post_id, post_date, author, content, group_name, react_pos, react_neg in cursor:
+      for post_id, post_date, parent_post_id, author, content, group_name, react_pos, react_neg in cursor:
         print(f"Post ID   : {post_id}")
         print(f"Post Date : {post_date}")
         print(f"Group     : {group_name}")
