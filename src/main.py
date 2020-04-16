@@ -137,7 +137,7 @@ query_list_post_details = (
 
 # user_id
 query_find_a_user = (
-  "SELECT * FROM People WHERE person_id = %s"
+  "SELECT * FROM People WHERE person_id = %s;"
 )
 
 # topic_id, topic_id
