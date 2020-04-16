@@ -14,7 +14,7 @@ query_login_auth = (
 
 # PERSON_ID, PERSON_ID, PERSON_ID, PERSON_ID
 query_list_all_posts_lim_100 = (
-  "SELECT DISTINCT(post_id), post_date, author, content, group_name, react_pos, react_neg from Posts LEFT JOIN Group_T USING (group_id) WHERE "
+  "SELECT DISTINCT(post_id), post_date, parent_post_id, author, content, group_name, react_pos, react_neg from Posts LEFT JOIN Group_T USING (group_id) WHERE "
 	"author = %s "
 	"OR "
 	"author IN (SELECT follows_id FROM followers_people WHERE person_id = %s) "
@@ -28,7 +28,7 @@ query_list_all_posts_lim_100 = (
 
 # PERSON_ID, PERSON_ID, PERSON_ID, PERSON_ID
 query_list_all_posts_no_lim = (
-  "SELECT DISTINCT(post_id), post_date, author, content, group_name, react_pos, react_neg from Posts LEFT JOIN Group_T USING (group_id) WHERE "
+  "SELECT DISTINCT(post_id), post_date, parent_post_id, author, content, group_name, react_pos, react_neg from Posts LEFT JOIN Group_T USING (group_id) WHERE "
 	"author = %s "
 	"OR "
 	"author IN (SELECT follows_id FROM followers_people WHERE person_id = %s) "
@@ -41,7 +41,7 @@ query_list_all_posts_no_lim = (
 
 # {PERSON_ID}, {keyword}
 query_search_following_posts = (
-  "SELECT DISTINCT(post_id), post_date, author, content, group_name, react_pos, react_neg from Posts LEFT JOIN Group_T USING (group_id) WHERE "
+  "SELECT DISTINCT(post_id), post_date, parent_post_id, author, content, group_name, react_pos, react_neg from Posts LEFT JOIN Group_T USING (group_id) WHERE "
 	"(author = '{0}' "
 	"OR "
 	"author IN (SELECT follows_id FROM followers_people WHERE person_id = '{0}') "
@@ -56,12 +56,12 @@ query_search_following_posts = (
 
 # PERSON_ID
 query_list_all_posts_your_posts = (
-  "SELECT DISTINCT(post_id), post_date, author, content, group_name, react_pos, react_neg from Posts LEFT JOIN Group_T USING (group_id) WHERE author = %s ORDER BY(post_date) DESC;"
+  "SELECT DISTINCT(post_id), post_date, parent_post_id, author, content, group_name, react_pos, react_neg from Posts LEFT JOIN Group_T USING (group_id) WHERE author = %s ORDER BY(post_date) DESC;"
 )
 
 # PERSON_ID, PERSON_ID, PERSON_ID, PERSON_ID
 query_list_all_posts_unread = (
-  "SELECT DISTINCT(post_id), post_date, author, content, group_name, react_pos, react_neg FROM Posts LEFT JOIN Group_T USING (group_id) WHERE "
+  "SELECT DISTINCT(post_id), post_date, parent_post_id, author, content, group_name, react_pos, react_neg FROM Posts LEFT JOIN Group_T USING (group_id) WHERE "
     "( "
       "author IN (SELECT follows_id FROM followers_people WHERE person_id = %s) "
       "OR "
@@ -286,6 +286,7 @@ else:
           for topic_name in cursor2:
             print(topic_name[0], end = " | ")
           print()
+          print(f"Reply To  : {parent_post_id}")
           print(f"Author    : {res[4]}")
           print(f":)        : {res[6]}")
           print(f":(        : {res[7]}")
@@ -309,7 +310,7 @@ else:
     elif selection == "2":
       cursor.execute(query_list_all_posts_lim_100, (PERSON_ID, PERSON_ID, PERSON_ID, PERSON_ID))
       print("Listing all posts with a limit of 100 posts shown")
-      for post_id, post_date, author, content, group_name, react_pos, react_neg in cursor:
+      for post_id, post_date, parent_post_id, author, content, group_name, react_pos, react_neg in cursor:
         print(f"Post ID   : {post_id}")
         print(f"Post Date : {post_date}")
         print(f"Group     : {group_name}")
@@ -318,6 +319,7 @@ else:
         for topic_name in cursor2:
           print(topic_name[0], end = " | ")
         print()
+        print(f"Reply To  : {parent_post_id}")
         print(f"Author    : {author}")
         print(f":)        : {react_pos}")
         print(f":(        : {react_neg}")
@@ -326,7 +328,7 @@ else:
     elif selection == "3":
       cursor.execute(query_list_all_posts_no_lim, (PERSON_ID, PERSON_ID, PERSON_ID, PERSON_ID))
       print("Listing all posts you follow")
-      for post_id, post_date, author, content, group_name, react_pos, react_neg in cursor:
+      for post_id, post_date, parent_post_id, author, content, group_name, react_pos, react_neg in cursor:
         print(f"Post ID   : {post_id}")
         print(f"Post Date : {post_date}")
         print(f"Group     : {group_name}")
@@ -335,6 +337,7 @@ else:
         for topic_name in cursor2:
           print(topic_name[0], end = " | ")
         print()
+        print(f"Reply To  : {parent_post_id}")
         print(f"Author    : {author}")
         print(f":)        : {react_pos}")
         print(f":(        : {react_neg}")
@@ -343,7 +346,7 @@ else:
     elif selection == "4":
       cursor.execute(query_list_all_posts_your_posts, (PERSON_ID,))
       print("Listing all of your posts")
-      for post_id, post_date, author, content, group_name, react_pos, react_neg in cursor:
+      for post_id, post_date, parent_post_id, author, content, group_name, react_pos, react_neg in cursor:
         print(f"Post ID   : {post_id}")
         print(f"Post Date : {post_date}")
         print(f"Group     : {group_name}")
@@ -352,6 +355,7 @@ else:
         for topic_name in cursor2:
           print(topic_name[0], end = " | ")
         print()
+        print(f"Reply To  : {parent_post_id}")
         print(f"Author    : {author}")
         print(f":)        : {react_pos}")
         print(f":(        : {react_neg}")
@@ -406,7 +410,7 @@ else:
     elif selection == "3":
       cursor.execute(query_list_all_posts_unread, (PERSON_ID, PERSON_ID, PERSON_ID, PERSON_ID))
       print("Listing all unread posts (determined by login time)")
-      for post_id, post_date, author, content, group_name, react_pos, react_neg in cursor:
+      for post_id, post_date, parent_post_id, author, content, group_name, react_pos, react_neg in cursor:
         print(f"Post ID   : {post_id}")
         print(f"Post Date : {post_date}")
         print(f"Group     : {group_name}")
@@ -415,6 +419,7 @@ else:
         for topic_name in cursor2:
           print(topic_name[0], end = " | ")
         print()
+        print(f"Reply To  : {parent_post_id}")
         print(f"Author    : {author}")
         print(f":)        : {react_pos}")
         print(f":(        : {react_neg}")
@@ -452,6 +457,7 @@ else:
         for topic_name in cursor2:
           print(topic_name[0], end = " | ")
         print()
+        print(f"Reply To  : {parent_post_id}")
         print(f"Author    : {author}")
         print(f":)        : {react_pos}")
         print(f":(        : {react_neg}")
